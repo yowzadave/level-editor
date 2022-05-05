@@ -2,11 +2,11 @@
   import TextInput from "./lib/TextInput.svelte";
   import SelectInput from "./lib/SelectInput.svelte";
   import BooleanInput from "./lib/BooleanInput.svelte";
+  import RadioInput from "./lib/RadioInput.svelte";
   import ResizablePanes from "./lib/ResizablePanes.svelte";
   import EditIcon from "./assets/edit.svg";
   import FillIcon from "./assets/fill.svg";
   import ExportIcon from "./assets/export.svg";
-  import ImportIcon from "./assets/import.svg";
   import ZoomInIcon from "./assets/zoom.svg";
   import ZoomOutIcon from "./assets/zoom-out.svg";
   import UploadIcon from "./assets/upload.svg";
@@ -16,11 +16,14 @@
   import Dropzone from "./lib/dropzone/Dropzone.svelte";
   import IndexAdder from "./lib/IndexAdder.svelte";
   import Modal from "./lib/Modal.svelte";
-  import slicePng from "./extensions/slice-png.js";
-  import { addToSortableList } from "./extensions/sortable-list.js";
+  import { slicePng, slicePngObj } from "./extensions/slice-png.js";
+  import {
+    addToSortableList,
+    replaceInOrder,
+    appendToList,
+  } from "./extensions/sortable-list.js";
   import defaultImageLayer from "./extensions/default-image-layer.js";
   import defaultIndexLayer from "./extensions/default-index-layer.js";
-  import downloadJson from "./extensions/download-json.js";
   import downloadObjectAsJson from "./extensions/download-json.js";
 
   const intParser = (v) => parseInt(v);
@@ -42,6 +45,7 @@
   let importDropzone;
   let currentTool = "edit";
   let currentLayerIndex = 0;
+  let importStyle = "replace";
 
   const ld = localStorage.getItem("data");
   if (ld) {
@@ -144,9 +148,17 @@
 
   async function uploadFiles(evt) {
     const { data } = evt.detail;
-    const slices = await slicePng(data, tilewidth, tileheight);
 
-    addToSortableList(currentLayer.tiles, ...Object.entries(slices));
+    if (importStyle === "replace") {
+      const slices = await slicePng(data, tilewidth, tileheight);
+      replaceInOrder(currentLayer.tiles, ...slices);
+    } else if (importStyle === "add") {
+      const slices = await slicePng(data, tilewidth, tileheight);
+      appendToList(currentLayer.tiles, ...slices);
+    } else if (importStyle === "merge") {
+      const slices = await slicePngObj(data, tilewidth, tileheight);
+      addToSortableList(currentLayer.tiles, ...Object.entries(slices));
+    }
 
     layers = layers;
 
@@ -243,7 +255,7 @@
         class="rounded p-2 hover:bg-gray-300"
         on:click={() => importDataModal.open()}
       >
-        <ImportIcon />
+        <UploadIcon />
       </div>
       <div class="rounded p-2 hover:bg-gray-300" on:click={exportData}>
         <ExportIcon />
@@ -344,22 +356,31 @@
     </ResizablePanes>
   </div>
 
-  <Modal bind:this={uploadModal} closeable>
-    <div slot="title">Upload</div>
-    <div slot="content">
-      <Dropzone on:drop={uploadFiles} bind:this={dropzone} accept="image/png" />
-    </div>
-  </Modal>
-
   <Modal bind:this={importDataModal} closeable>
     <div slot="title">Upload</div>
-    <div slot="content">
+    <div slot="content" class="text-xs">
       <Dropzone
         on:drop={importData}
         bind:this={importDropzone}
         readAs={"text"}
         accept="application/json"
       />
+    </div>
+  </Modal>
+
+  <Modal bind:this={uploadModal} closeable>
+    <div slot="title">Upload</div>
+    <div slot="content" class="space-y-2 text-xs">
+      <RadioInput
+        name="import-type"
+        options={[
+          { label: "Replace tiles in-order", value: "replace" },
+          { label: "Add tiles in-order", value: "add" },
+          { label: "Add tiles, merging duplicates", value: "merge" },
+        ]}
+        bind:value={importStyle}
+      />
+      <Dropzone on:drop={uploadFiles} bind:this={dropzone} accept="image/png" />
     </div>
   </Modal>
 </main>

@@ -1,3 +1,5 @@
+import { nanoid } from "nanoid";
+
 function sortableList(arr) {
   return arr.reduce(
     (o, el) => {
@@ -17,6 +19,22 @@ function addToSortableList(obj, ...items) {
   items.forEach(([key, item]) => {
     obj[key] = item;
     obj.order.push(key);
+  });
+}
+
+function appendToList(obj, ...items) {
+  items.forEach((item) => {
+    const key = nanoid();
+    obj.order.push(key);
+    obj[key] = item;
+  });
+}
+
+function replaceInOrder(obj, ...items) {
+  items.forEach((item, i) => {
+    const key = obj.order[i] || nanoid();
+    obj.order[i] = key;
+    obj[key] = item;
   });
 }
 
@@ -59,6 +77,8 @@ export {
   sortableList,
   orderedList,
   addToSortableList,
+  replaceInOrder,
+  appendToList,
   removeFromSortableList,
   select,
   deselect,

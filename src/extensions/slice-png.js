@@ -1,20 +1,50 @@
 import { nanoid } from "nanoid";
 import hashString from "./hash-string.js";
 
-async function slicePng(stream, tilewidth, tileheight) {
+async function imgDims(img) {
   // get dimensions of image
   const image = new Image();
-  image.src = stream;
+  image.src = img;
 
-  const { width, height } = await new Promise((resolve) => {
+  const dims = await new Promise((resolve) => {
     image.onload = () => {
       const width = image.width;
       const height = image.height;
-      image.style.width = `${tilewidth}px`;
-      image.style.height = `${tileheight}px`;
       resolve({ width, height });
     };
   });
+
+  return { image, ...dims };
+}
+
+async function slicePng(img, tilewidth, tileheight) {
+  const { image, width, height } = await imgDims(img);
+
+  const hslices = Math.ceil(width / tilewidth);
+  const vslices = Math.ceil(height / tileheight);
+
+  const tw = tilewidth;
+  const th = tileheight;
+
+  const slices = [];
+  for (let x = 0; x < hslices; x++) {
+    for (let y = 0; y < vslices; y++) {
+      const canvas = document.createElement("canvas");
+      canvas.width = tw;
+      canvas.height = th;
+      const ctx = canvas.getContext("2d");
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(image, x * tw, y * th, tw, th, 0, 0, tw, th);
+
+      slices.push(canvas.toDataURL());
+    }
+  }
+
+  return slices;
+}
+
+async function slicePngObj(img, tilewidth, tileheight) {
+  const { image, width, height } = await imgDims(img);
 
   const hslices = Math.ceil(width / tilewidth);
   const vslices = Math.ceil(height / tileheight);
@@ -47,4 +77,4 @@ async function slicePng(stream, tilewidth, tileheight) {
   }, {});
 }
 
-export default slicePng;
+export { slicePng, slicePngObj };
